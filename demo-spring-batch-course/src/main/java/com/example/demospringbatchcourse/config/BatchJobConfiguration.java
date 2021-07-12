@@ -1,21 +1,21 @@
 package com.example.demospringbatchcourse.config;
 
+import com.example.demospringbatchcourse.domain.PatientEntity;
 import com.example.demospringbatchcourse.domain.PatientRecord;
-import org.hibernate.engine.jdbc.internal.JdbcCoordinatorImpl;
 import org.springframework.batch.core.*;
 import org.springframework.batch.core.configuration.JobRegistry;
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.core.configuration.support.JobRegistryBeanPostProcessor;
-import org.springframework.batch.core.launch.support.RunIdIncrementer;
+import org.springframework.batch.item.database.JpaItemWriter;
 import org.springframework.batch.item.file.FlatFileItemReader;
 import org.springframework.batch.item.file.LineMapper;
 import org.springframework.batch.item.file.builder.FlatFileItemReaderBuilder;
 import org.springframework.batch.item.file.mapping.DefaultLineMapper;
 import org.springframework.batch.item.file.transform.DelimitedLineTokenizer;
-import org.springframework.batch.item.support.PassThroughItemProcessor;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,12 +23,12 @@ import org.springframework.core.io.PathResource;
 
 
 import javax.batch.api.chunk.ItemReader;
-import javax.batch.api.chunk.ItemWriter;
+import javax.persistence.EntityManagerFactory;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
+import java.util.function.Function;
 
 import static org.apache.commons.lang3.StringUtils.isBlank;
 import static org.apache.commons.lang3.StringUtils.wrapIfMissing;
@@ -48,6 +48,10 @@ public class BatchJobConfiguration {
     @Autowired
     private ApplicationProperties applicationProperties;
 
+    @Autowired
+    @Qualifier(value="batchEntityManagerFactory")
+    private EntityManagerFactory batchEntityManagerFactory;
+
 
 
     @Bean
@@ -64,6 +68,19 @@ public class BatchJobConfiguration {
                 //Valida parâmetros
                 .validator(validator())
                 .start(step)
+                .build();
+    }
+
+    @Bean
+    public Step step(ItemReader<PatientRecord> itemReader,
+                     Function<PatientRecord, PatientEntity> processor,
+                     JpaItemWriter<PatientEntity> writer) throws Exception {
+        return this.stepBuilderFactory
+                .get(Constants.STEP_NAME)
+                .<PatientRecord, PatientEntity>chunk(2)
+                .reader(itemReader)
+                .processor(processor)
+                .writer(writer)
                 .build();
     }
 
@@ -94,18 +111,6 @@ public class BatchJobConfiguration {
     }
 
     @Bean
-    public Step step(ItemReader<PatientRecord> itemReader) throws Exception {
-        return this.stepBuilderFactory
-                .get(Constants.STEP_NAME)
-                .<PatientRecord, PatientRecord>chunk(2)
-                .reader(ItemReader)
-                .processor(processor())
-                .writer(writer())
-                .build();
-
-    }
-
-    @Bean
     @StepScope
     public FlatFileItemReader<PatientRecord> reader(
             @Value("#{jobParameters['" + Constants.JOB_PARAM_FILE_NAME + "']}")String fileName) {
@@ -118,6 +123,30 @@ public class BatchJobConfiguration {
                 .linesToSkip(1)
                 .lineMapper(lineMapper())
                 .build();
+    }
+
+    @Bean
+    @StepScope
+    public Function<PatientRecord, PatientEntity> processor() {
+        return (patient) ->  {
+            return new PatientEntity(
+                    patient.getSourceId(),
+                    patient.getFirstName(),
+                    patient.getLastName(),
+                    patient.getEmail(),
+                    patient.getPhoneNumber(),
+                    patient.getStreet(),
+                    patient.getCity(),
+                    patient.getState();
+        });
+    }
+
+    @Bean
+    @StepScope
+    public JpaItemWriter<PatientEntity> writer() {
+        JpaItemWriter<PatientEntity> writer = new JpaItemWriter<>();
+        writer.setEntityManagerFactory(batchEntityManagerFactory);
+        return writer;
     }
 
       @Bean
@@ -135,22 +164,4 @@ public class BatchJobConfiguration {
           return mapper;
       }
 
-      @Bean
-      @StepScope
-      public PassThroughItemProcessor<PatientRecord> processor(){
-        return new PassThroughItemProcessor<>();
-      }
-
-    @Bean
-    @StepScope
-    public ItemWriter<PatientRecord> writer(){
-        return new ItemWriter<PatientRecord>(){
-            @Override
-            public void writer(List<? extends PatientRecord> items) throws Exception{
-                for (PatientRecord patientRecord : items){
-                    System.err.println("Writing item: " + patientRecord.toString());
-                }
-            }
-        };
-    }
 }
