@@ -1,9 +1,15 @@
 package com.example.demospringbatchcourse.config;
 
 import javax.persistence.AttributeConverter;
+import javax.persistence.Converter;
 import java.time.Instant;
 import java.sql.Timestamp;
 
+/**
+ * Converter for supporting new time apis with H2. Provides conversion between
+ * Instant and Timestamp.
+ */
+@Converter(autoApply = true)
 public class InstantTimeJPAConverter implements AttributeConverter<Instant, Timestamp> {
 
     @Override
