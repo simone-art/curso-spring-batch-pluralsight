@@ -9,7 +9,9 @@ import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.repository.support.JobRepositoryFactoryBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.annotation.PostConstruct;
@@ -33,7 +35,7 @@ public class BatchConfiguration  {
     private JobExplorer jobExplorer;
     private JobLauncher jobLauncher;
 
-    @Autowired
+    //@Autowired(required = true)
     @Qualifier(value = "batchTransactionManager")
     private PlatformTransactionManager batchTransactionManager;
 

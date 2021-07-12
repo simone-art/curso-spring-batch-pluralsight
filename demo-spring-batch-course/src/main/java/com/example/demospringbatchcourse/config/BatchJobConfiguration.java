@@ -54,7 +54,7 @@ public class BatchJobConfiguration {
                 .build();
     }
 
-    //Cóigo que valida que os parâmetros definidos sejam validados
+    //Código que valida que os parâmetros definidos sejam validados
     public JobParametersValidator validator() {
         return new JobParametersValidator() {
             @Override
