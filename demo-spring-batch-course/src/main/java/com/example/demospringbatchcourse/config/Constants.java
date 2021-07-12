@@ -22,6 +22,8 @@ public final class Constants {
 
     public static final String STEP_NAME = "process-patients_step";
 
+    public static final String ITEM_READER_NAME = "patient-item-reader";
+
     private Constants(){
 
     }
