@@ -45,6 +45,10 @@ public class BatchJobConfiguration {
     @Autowired
     private StepBuilderFactory stepBuilderFactory;
 
+    @Autowired
+    private ApplicationProperties applicationProperties;
+
+
 
     @Bean
     JobRegistryBeanPostProcessor jobRegistryBeanPostProcessor(JobRegistry jobRegistry) {
@@ -57,11 +61,9 @@ public class BatchJobConfiguration {
     public Job job(Step step) throws Exception {
         return this.jobBuilderFactory
                 .get(Constants.JOB_NAME)
-                .incrementer(new RunIdIncrementer())
                 //Valida parâmetros
                 .validator(validator())
-                .flow(step)
-                .end()
+                .start(step)
                 .build();
     }
 
@@ -96,7 +98,7 @@ public class BatchJobConfiguration {
         return this.stepBuilderFactory
                 .get(Constants.STEP_NAME)
                 .<PatientRecord, PatientRecord>chunk(2)
-                .reader(itemReader)
+                .reader(ItemReader)
                 .processor(processor())
                 .writer(writer())
                 .build();
@@ -106,17 +108,18 @@ public class BatchJobConfiguration {
     @Bean
     @StepScope
     public FlatFileItemReader<PatientRecord> reader(
-            @Value("#{jobParameters['" + Constants.JOB_PARAM_FILE_NAME + "']}") String fileName, JdbcCoordinatorImpl applicationProperties) {
+            @Value("#{jobParameters['" + Constants.JOB_PARAM_FILE_NAME + "']}")String fileName) {
         return new FlatFileItemReaderBuilder<PatientRecord>()
-            .name(Constants.ITEM_READER_NAME)
-            .resource(
-                    new PathResource(
-                            Paths.get(applicationProperties.getBatch().getInputPath() +
-                                    File.separator + fileName)))
-                    .linesToSkip(1)
-                    .lineMapper(lineMapper())
-                    .build();
-            }
+                .name(Constants.ITEM_READER_NAME)
+                .resource(
+                        new PathResource(
+                                Paths.get(applicationProperties.getBatch().getInputPath() +
+                                        File.separator + fileName)))
+                .linesToSkip(1)
+                .lineMapper(lineMapper())
+                .build();
+    }
+
       @Bean
       public LineMapper<PatientRecord> lineMapper(){
           DefaultLineMapper<PatientRecord> mapper = new DefaultLineMapper<>();
